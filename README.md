@@ -90,7 +90,7 @@ LifeHack: металлическая скоба сделана из уголка
 На этом этапе корпус лампы собран, все контакты подключены и прозвонены. Осталось только загрузить скетч.
 
 4. Загружаем скетч.
-'''
+```cpp
 #include <Ultrasonic.h>
 #include <Servo.h>
 
@@ -207,7 +207,7 @@ void loop(){
   delay(300);
 
 }
-'''
+```
 5. Итоговый результат:
 
 https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/37e47819-3efb-438b-ace4-131e6abe4a67
