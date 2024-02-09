@@ -44,22 +44,19 @@ void loop(){
   if (distance < (15 + rate) && distance > (0 + rate)) {
     power = (distance - rate) * 17;
     analogWrite(LED, power);
-  } else {analogWrite(LED, power);}
-
-  if (distance < (1 + rate) && distance > 0) {
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
+    analogWrite(LED4, power);
+    analogWrite(LED5, power);
+  } else if (distance < (1 + rate) && distance > 0) {
     power = 0;
     analogWrite(LED, power);
     analogWrite(LED2, power);
     analogWrite(LED3, power);
     analogWrite(LED4, power);
     analogWrite(LED5, power);
-  } else {analogWrite(LED, power);
-  analogWrite(LED2, power);
-  analogWrite(LED3, power);
-  analogWrite(LED4, power);
-  analogWrite(LED5, power);}
 
-  if (distance < (20 + rate) && distance > (16 + rate)) {
+  } else if (distance < (20 + rate) && distance > (16 + rate)) {
     power = 255;
     analogWrite(LED, power);
     analogWrite(LED2, power);
