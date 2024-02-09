@@ -75,9 +75,142 @@ LifeHack: металлическая скоба сделана из уголка
 
 В такой конструкции корпус сервопривода жестко крепится к корпусу лампы и внешней стороне подшипника. Сервопривод вращает внутреннюю сторону подшипника, на которую так же винтом закреплена полка - основание. Важно! В моем примере основание будет иметь дополнительное крепление к столу. Чтобы лампа не заваливалась под собственным весом,потребуется полка не менее 15см.
 
-Подкдлючаем сервопривод к 3 проводам, которые мы вывели раннее. Зеленый (pin для серво) подключаем прямо к хвосту, обрезаем излишек. К красному и черному проводу необходимо врезаться удобным для Вас способом. Останется хвост 50+ см из красного и черного провода - подключаем к источнику питания
+Подкдлючаем сервопривод к 3 проводам, которые мы вывели раннее. Зеленый (pin для серво) подключаем прямо к хвосту, обрезаем излишек. К красному и черному проводу необходимо врезаться удобным для Вас способом. Останется хвост 50+ см из красного и черного провода - подключаем к источнику питания.
+
+У моего светльника у основания был корпус под дроссель для люминисцентной лампы, поэтому сервопривод я спрятал в корпус. В модификации без этого корпуса, каркас лампы придется сместить влево или вправо и подумать над жестким креплением к внешней стороне подшипника, так как нагрузка рычага лампы большая (про горячий клей и жидкие гвозди забудьте).
 
 ![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/fc65f969-dae8-4c74-85c5-3db6e61aa41a)
 
 ![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/ba743656-e7bf-423b-9979-1aa35e68b491)
 
+Сцепку корпуса лампы с внешней стороной подшипника сделал так же из металлического  уголка. Это был уже третий вариант крепления, поэтому корпус много повидал.
+
+![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/54afbb9c-3ed3-4ad5-8ce0-7706672011a3)
+
+На этом этапе корпус лампы собран, все контакты подключены и прозвонены. Осталось только загрузить скетч.
+
+4. Загружаем скетч.
+
+#include <Ultrasonic.h>
+#include <Servo.h>
+
+//пины
+int trigPin = A0;
+int echoPin = A1;
+int potentiometer = A3;
+int LED = 3;    //ШИМ
+int LED2 = 6;    //ШИМ
+int LED3 = 11;    //ШИМ
+int LED4 = 10;    //ШИМ
+int LED5 = 9;    //ШИМ
+int servoPin = 5;    //ШИМ
+
+//переменные
+int distance = 0;
+int power = 0;    // при включении, диоды выключены
+int sleepmode = 0;    // при включении, выходит из сна
+int sleepPos = 180;    // позиция сна (в градусах)
+int targetPos = 130;    // позиция в режиме работы (в градусах)
+int stepPos = 5;    // шаг вращения
+int rate = 2;    // погрешность в см, так как датчик работает от 2см
+Ultrasonic ultrasonic(trigPin, echoPin);
+Servo Servo1;
+
+
+void setup(){ 
+  Serial.begin(9600); // Запускаем монитор для инфо
+  pinMode(LED, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(LED4, OUTPUT);
+  pinMode(LED5, OUTPUT);
+  pinMode(potentiometer, INPUT);
+  Servo1.attach(servoPin);
+  targetPos = targetPos / stepPos; // меняем градусы на делитель для потенциометра
+  Servo1.write(sleepPos); //калибруем на позицию сна
+  delay(100);
+}
+
+void loop(){
+  //задаем дистанцию для управления
+  distance = ultrasonic.distanceRead();
+  if (distance < (15 + rate) && distance > (0 + rate)) {
+    power = (distance - rate) * 17;
+    analogWrite(LED, power);
+  } else {analogWrite(LED, power);}
+
+  if (distance < (1 + rate) && distance > 0) {
+    power = 0;
+    analogWrite(LED, power);
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
+    analogWrite(LED4, power);
+    analogWrite(LED5, power);
+  } else {analogWrite(LED, power);
+  analogWrite(LED2, power);
+  analogWrite(LED3, power);
+  analogWrite(LED4, power);
+  analogWrite(LED5, power);}
+
+  if (distance < (20 + rate) && distance > (16 + rate)) {
+    power = 255;
+    analogWrite(LED, power);
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
+    analogWrite(LED4, power);
+    analogWrite(LED5, power);
+  } else {analogWrite(LED, power);
+  analogWrite(LED2, power);
+  analogWrite(LED3, power);
+  analogWrite(LED4, power);
+  analogWrite(LED5, power);}
+
+  //задаем угол вращения
+  int currPos = Servo1.read(); // Текущая позиция
+  int val_poten = analogRead(potentiometer); // Считываем данные с потенциометра
+  targetPos = map(val_poten, 0, 1023, 0, 180 / stepPos); // переводим данные потенциометра в новый диапазон
+
+
+  if (power == 0) {    // переход в режим сна
+    delay(1000);
+    while (currPos < sleepPos) { // Вращаем сервомотор влево с шагом 5 градусов
+      currPos += stepPos;
+      Servo1.write(currPos);
+      delay(100);
+    }
+
+  } else {
+    int diff = abs(currPos - (targetPos * stepPos)); // Вычисляем разницу между переменными
+    if (diff > 5) { // Если разница больше 5
+        if (currPos > (targetPos * stepPos)) { // Если текущая позиция больше заданной
+            while (currPos > (targetPos * stepPos)) { // Вращаем сервомотор влево с шагом 5 градусов
+                currPos -= stepPos;
+                Servo1.write(currPos);
+                delay(100);
+            }
+        } else if (currPos < (targetPos * stepPos)) { // Если текущая позиция меньше заданной
+            while (currPos < (targetPos * stepPos)) { // Вращаем сервомотор вправо с шагом 5 градусов
+                currPos += stepPos;
+                Servo1.write(currPos);
+                delay(100);
+            }
+        }
+    } else {
+        // Разница между переменными составляет 5 или менее
+    }
+}
+  //Монитор для инфо
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm, power: ");
+  Serial.println(power);
+  delay(300);
+
+}
+
+
+5. Итоговый результат:
+
+https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/37e47819-3efb-438b-ace4-131e6abe4a67
+
+Пожелание к доработке - иногда сервопривод пощелкивает, если не выходит на идеальный градус. Хотелось бы найти красивое решение через код.
