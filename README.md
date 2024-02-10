@@ -103,16 +103,17 @@ int LED2 = 6;    //ШИМ
 int LED3 = 11;    //ШИМ
 int LED4 = 10;    //ШИМ
 int LED5 = 9;    //ШИМ
-int servoPin = 5;    //ШИМ
+int servoPin = 5;
 
 //переменные
 int distance = 0;
-int power = 0;    // при включении, диоды выключены
+int power = 0;       // при включении, диоды выключены
 int sleepmode = 0;    // при включении, выходит из сна
 int sleepPos = 180;    // позиция сна (в градусах)
 int targetPos = 130;    // позиция в режиме работы (в градусах)
-int stepPos = 5;    // шаг вращения
+int stepPos = 3;    // шаг вращения
 int rate = 2;    // погрешность в см, так как датчик работает от 2см
+int old_distance = 0;    // для сравнения прошлого и нынешнего показателя
 Ultrasonic ultrasonic(trigPin, echoPin);
 Servo Servo1;
 
@@ -141,6 +142,7 @@ void loop(){
     analogWrite(LED3, power);
     analogWrite(LED4, power);
     analogWrite(LED5, power);
+
   } else if (distance < (1 + rate) && distance > 0) {
     power = 0;
     analogWrite(LED, power);
@@ -156,6 +158,7 @@ void loop(){
     analogWrite(LED3, power);
     analogWrite(LED4, power);
     analogWrite(LED5, power);
+
   } else {analogWrite(LED, power);
   analogWrite(LED2, power);
   analogWrite(LED3, power);
@@ -163,18 +166,22 @@ void loop(){
   analogWrite(LED5, power);}
 
   //задаем угол вращения
-  int currPos = Servo1.read(); // Текущая позиция
-  int val_poten = analogRead(potentiometer); // Считываем данные с потенциометра
-  targetPos = map(val_poten, 0, 1023, 0, 180 / stepPos); // переводим данные потенциометра в новый диапазон
+  if (distance != old_distance) {
+    int currPos = Servo1.read(); // Текущая позиция
+    int val_poten = analogRead(potentiometer); // Считываем данные с потенциометра
+    targetPos = map(val_poten, 0, 1023, 0, 180 / stepPos); // переводим данные потенциометра в новый диапазон
 
 
   if (power == 0) {    // переход в режим сна
     delay(1000);
-    while (currPos < sleepPos) { // Вращаем сервомотор влево с шагом 5 градусов
+    while (currPos < sleepPos) {
       currPos += stepPos;
+      if (currPos > sleepPos) {
+      currPos = sleepPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+      }
       Servo1.write(currPos);
       delay(100);
-    }
+}
 
   } else {
     int diff = abs(currPos - (targetPos * stepPos)); // Вычисляем разницу между переменными
@@ -182,12 +189,18 @@ void loop(){
         if (currPos > (targetPos * stepPos)) { // Если текущая позиция больше заданной
             while (currPos > (targetPos * stepPos)) { // Вращаем сервомотор влево с шагом 5 градусов
                 currPos -= stepPos;
+                if (currPos < (targetPos * stepPos)) {
+                  currPos = targetPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+                  }
                 Servo1.write(currPos);
                 delay(100);
             }
         } else if (currPos < (targetPos * stepPos)) { // Если текущая позиция меньше заданной
             while (currPos < (targetPos * stepPos)) { // Вращаем сервомотор вправо с шагом 5 градусов
                 currPos += stepPos;
+                if (currPos > (targetPos * stepPos)) {
+                  currPos = targetPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+                  }
                 Servo1.write(currPos);
                 delay(100);
             }
@@ -196,6 +209,9 @@ void loop(){
         // Разница между переменными составляет 5 или менее
     }
 }
+  }
+  old_distance = distance;    //перезаписываем переменную
+  
   //Монитор для инфо
   Serial.print("Distance: ");
   Serial.print(distance);
@@ -205,10 +221,13 @@ void loop(){
 
 }
 ```
+Справочно. В коде заложено несколько функций, чтобы пощадить сервомотор: 
+- плавное перемещение светильника (переменная stepPos)
+- будет работать только при изменении показателей ультразвукового датчика (переменная old_distance),
+- не будет реагировать на близкий к заданному углу промежуток в 5 градусов (переменная diff)
+
 5. Итоговый результат:
 
 https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/37e47819-3efb-438b-ace4-131e6abe4a67
 
 Бум! :-)
-
-Пожелание к доработке - иногда сервопривод пощелкивает, если не выходит на идеальный градус. Хотелось бы найти красивое решение через код.
