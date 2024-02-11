@@ -50,11 +50,7 @@ LifeHack: гибкие провода можно взять из интерне�
 ![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/f71b8976-3f9b-4d10-881b-5d3098f00f66)
 
 У меня получилось так:
-(В этом варианте светодиоды спаяны в одну цепь, так мы теряем мощность)
-
-![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/da365674-ff03-43ee-8376-de5d3305c014)
-
-(Светодиоды перепаяны)
+![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/430a4367-ed91-4b3c-9d8c-33de54da3c4e)
 
 ![image](https://github.com/Kirill-Kasparov/Smart-LED-lamp-Arduino/assets/131332065/cf50ccb5-af00-4717-a0ff-67f8673dfbd4)
 
