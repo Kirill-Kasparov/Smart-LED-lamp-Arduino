@@ -88,119 +88,122 @@ LifeHack: металлическая скоба сделана из уголка
 
 4. Загружаем скетч.
 ```cpp
-#include <Wire.h> 
-#include <LiquidCrystal_I2C.h>
-#include <DHT.h>      // подключаем библиотека для датчика температуры и влажности
+#include <Ultrasonic.h>
+#include <Servo.h>
 
-int AirValuePin = A3;  // Пин подключения потенциометра для переменной WaterValue
-int AlarmLed = 2;   // Пин светодиода тревоги
-DHT dht(11, DHT22);  // Пин датчика температуры и влажности
-LiquidCrystal_I2C lcd(0x27,16,2);  // Устанавливаем дисплей
+//пины
+int trigPin = A0;
+int echoPin = A1;
+int potentiometer = A3;
+int LED = 3;
+int LED2 = 6;
+int LED3 = 11;
+int servoPin = 5;
+
+//переменные
+int distance = 0;
+int power = 0;       // при включении, диоды выключены
+int sleepmode = 0;    // при включении, выходит из сна
+int sleepPos = 180;    // позиция сна (в градусах)
+int targetPos = 130;    // позиция в режиме работы (в градусах)
+int stepPos = 3;    // шаг вращения
+int rate = 2;    // погрешность в см, так как датчик работает от 2см
+int old_distance = 0;    // для сравнения прошлого и нынешнего показателя
+Ultrasonic ultrasonic(trigPin, echoPin);
+Servo Servo1;
 
 
-//датчики влажности почвы
-int AirValue = 600;             // Максимальное значение сухого датчика
-int WaterValue = 300;           // Минимальное значение погруженного датчика
-
-int soilMoistureValue = 0;            // Создаем переменную soilMoistureValue
-int soilMoisturePercent = 0;    
-
-int soilMoistureValue2 = 0;            // Создаем переменную soilMoistureValue2
-int soilMoisturePercent2 = 0;  
-
-int soilMoistureValue3 = 0;            // Создаем переменную soilMoistureValue3
-int soilMoisturePercent3 = 0;  
-
-void setup() 
-{
-  Serial.begin(9600);                 // Открываем последовательную связь на скорости 9600
-  pinMode(soilMoistureValue, INPUT);  // Устанавливаем вывод как вход.
-  pinMode(soilMoistureValue2, INPUT);  // Устанавливаем вывод как вход.
-  pinMode(soilMoistureValue3, INPUT);  // Устанавливаем вывод как вход.
-  pinMode(AirValuePin, INPUT);  // Потенциометр
-  pinMode(AlarmLed, OUTPUT);
-  dht.begin();                // запускаем датчик DHT22
-  
-  lcd.init();                     
-  lcd.backlight();// Включаем подсветку дисплея
-
+void setup(){ 
+  Serial.begin(9600); // Запускаем монитор для инфо
+  pinMode(LED, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(potentiometer, INPUT);
+  Servo1.attach(servoPin);
+  targetPos = targetPos / stepPos; // меняем градусы на делитель для потенциометра
+  Servo1.write(sleepPos); //калибруем на позицию сна
+  delay(100);
 }
-void loop() 
-{
-// Снимаем порог влажности с потенциометра
-int airPotValue = analogRead(AirValuePin);  // Считываем значение с потенциометра для AirValue
-AirValue = map(airPotValue, 0, 1023, WaterValue, 1000); // Маппинг значения на диапазон от 300 до 600
 
-// Снимаем температуру и влажность воздуха
-int f = dht.readHumidity();
-int t = dht.readTemperature();
+void loop(){
+  //задаем дистанцию для управления
+  distance = ultrasonic.distanceRead();
+  if (distance < (15 + rate) && distance > (0 + rate)) {
+    power = (distance - rate) * 17;
+    analogWrite(LED, power);
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
 
-// Выводим темп. и влажн. воздуха
-lcd.setCursor(0, 0);
-lcd.print("Temp: ");
-lcd.print(t);
-lcd.print("c");
+  } else if (distance < (1 + rate) && distance > 0) {
+    power = 0;
+    analogWrite(LED, power);
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
 
-lcd.setCursor(9, 0);
-lcd.print(" f: ");
-lcd.print(f);
-lcd.print("%");
+  } else if (distance < (20 + rate) && distance > (16 + rate)) {
+    power = 255;
+    analogWrite(LED, power);
+    analogWrite(LED2, power);
+    analogWrite(LED3, power);
 
-  //Снимаем влажность почвы
-soilMoistureValue = analogRead(A0);   // Считываем данные с порта A0 и записываем их в переменную
-soilMoistureValue2 = analogRead(A1);   // Считываем данные с порта A0 и записываем их в переменную
-soilMoistureValue3 = analogRead(A2);   // Считываем данные с порта A0 и записываем их в переменную
+  } else {analogWrite(LED, power);
+  analogWrite(LED2, power);
+  analogWrite(LED3, power);}
 
-if (soilMoistureValue > AirValue || soilMoistureValue2 > AirValue || soilMoistureValue3 > AirValue) {    // устраняем погрешность вычислений
-    AirValue = max(max(soilMoistureValue, soilMoistureValue2), soilMoistureValue3);}
+  //задаем угол вращения
+  if (distance != old_distance) {
+    int currPos = Servo1.read(); // Текущая позиция
+    int val_poten = analogRead(potentiometer); // Считываем данные с потенциометра
+    targetPos = map(val_poten, 0, 1023, 0, 180 / stepPos); // переводим данные потенциометра в новый диапазон
 
-if (soilMoistureValue < WaterValue || soilMoistureValue2 < WaterValue || soilMoistureValue3 < WaterValue) {
-  WaterValue = min(min(soilMoistureValue, soilMoistureValue2), soilMoistureValue3);}
 
+  if (power == 0) {    // переход в режим сна
+    delay(1000);
+    while (currPos < sleepPos) {
+      currPos += stepPos;
+      if (currPos > sleepPos) {
+      currPos = sleepPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+      }
+      Servo1.write(currPos);
+      delay(100);
+}
 
-soilMoisturePercent = map(soilMoistureValue, AirValue, WaterValue, 0, 9);
-soilMoisturePercent2 = map(soilMoistureValue2, AirValue, WaterValue, 0, 9);
-soilMoisturePercent3 = map(soilMoistureValue3, AirValue, WaterValue, 0, 9);
-
-// Выводим влажность почвы
-lcd.setCursor(0, 1);
-lcd.print("1");
-lcd.write(126);
-lcd.print(soilMoisturePercent);
-
-lcd.setCursor(5, 1);
-lcd.print(" 2");
-lcd.write(126);
-lcd.print(soilMoisturePercent2);
-
-lcd.setCursor(11, 1);
-lcd.print(" 3");
-lcd.write(126);
-lcd.print(soilMoisturePercent3);
-
-// Сигнал тревоги
-if (soilMoisturePercent <= 1 || soilMoisturePercent2 <= 1 || soilMoisturePercent3 <= 1) {
-    digitalWrite(AlarmLed, HIGH);
   } else {
-    digitalWrite(AlarmLed, LOW);
+    int diff = abs(currPos - (targetPos * stepPos)); // Вычисляем разницу между переменными
+    if (diff > 5) { // Если разница больше 5
+        if (currPos > (targetPos * stepPos)) { // Если текущая позиция больше заданной
+            while (currPos > (targetPos * stepPos)) { // Вращаем сервомотор влево с шагом 5 градусов
+                currPos -= stepPos;
+                if (currPos < (targetPos * stepPos)) {
+                  currPos = targetPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+                  }
+                Servo1.write(currPos);
+                delay(100);
+            }
+        } else if (currPos < (targetPos * stepPos)) { // Если текущая позиция меньше заданной
+            while (currPos < (targetPos * stepPos)) { // Вращаем сервомотор вправо с шагом 5 градусов
+                currPos += stepPos;
+                if (currPos > (targetPos * stepPos)) {
+                  currPos = targetPos; // Если currPos стал больше sleepPos, присваиваем currPos значение sleepPos
+                  }
+                Servo1.write(currPos);
+                delay(100);
+            }
+        }
+    } else {
+        // Разница между переменными составляет 5 или менее
+    }
+}
   }
+  old_distance = distance;    //перезаписываем переменную
+  
+  //Монитор для инфо
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm, power: ");
+  Serial.println(power);
+  delay(300);
 
-// Монитор
-Serial.print("Temp: ");
-Serial.print(t);
-Serial.print("с f: ");
-Serial.println(f);
-Serial.print("1-");
-Serial.print(soilMoisturePercent);
-Serial.print("% 2-");
-Serial.print(soilMoisturePercent2);
-Serial.print("% 3-");
-Serial.println(soilMoisturePercent3);
-Serial.print("AirValue: ");
-Serial.println(AirValue);
-Serial.println(airPotValue);
-
-delay(1000);
 }
 ```
 Справочно. В коде заложено несколько функций, чтобы пощадить сервомотор: 
